@@ -4,6 +4,8 @@ namespace App\Services;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ProductTypeService extends BaseService
 {
@@ -16,10 +18,16 @@ class ProductTypeService extends BaseService
         $queryList = $request->query();
         $modelQuery = $this->processQueryParams($queryList, $model);
 
-        return parent::search($request, $modelQuery);
+        $name = $queryList['name'] ?? '';
+        $description = $queryList['description'] ?? '';
+
+        return Cache::remember('productType' . $name .  $description, 10, function () use ($request, $modelQuery) {
+            return parent::search($request, $modelQuery);
+        });
     }
 
-    public function processQueryParams($queryList, $model){
+    public function processQueryParams($queryList, $model)
+    {
         $modelQuery = $model::query();
         foreach ($queryList as $key => $value) {
             switch ($key) {

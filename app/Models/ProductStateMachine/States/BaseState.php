@@ -16,8 +16,6 @@ class BaseState
 
     public function moveToState(Product $product, ProductState $productState, $dataToUpdate = null)
     {
-        Log::info("testing func", [$product, $productState, $dataToUpdate]);
-        Log::info("user in move", [auth()->user()]);
         $product = Product::find($product->id);
         if (is_null($dataToUpdate)) {
             Log::info("in is null");
@@ -32,7 +30,7 @@ class BaseState
             $product->update([
                 'state' => $productState,
                 ...$dataToUpdate,
-                // 'activatedBy' => auth()->user()->id;
+                'activatedBy' => auth()->user()->id,
             ]);
         }
         Log::info("product to return ",[$product]);

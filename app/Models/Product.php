@@ -16,9 +16,10 @@ class Product extends Model
         'product_type_id',
         'state',
         'validFrom',
-        'validTo'
+        'validTo',
+        'activatedBy'
     ];
-    public function varinats(): HasMany
+    public function variants(): HasMany
     {
         return $this->hasMany(Variant::class);
     }
@@ -26,5 +27,10 @@ class Product extends Model
     public function productType(): BelongsTo
     {
         return $this->belongsTo(ProductType::class);
+    }
+
+    public function newestVariant()
+    {
+        return $this->hasOne(Variant::class)->latestOfMany();
     }
 }

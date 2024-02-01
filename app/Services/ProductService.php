@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Resources\ProductWithNewestVariantResource;
 use App\Models\Enums\ProductState;
 use App\Models\Product;
 use App\Models\ProductStateMachine\States\BaseState;
@@ -21,6 +22,12 @@ class ProductService extends BaseService
         $modelQuery = $this->processQueryParams($queryList, $model);
 
         return parent::search($request, $modelQuery);
+    }
+
+    public function show(string $id, $model)
+    {
+        $product = Product::find($id);
+        return ProductWithNewestVariantResource::make($product);
     }
 
     public function processQueryParams($queryList, $model)
