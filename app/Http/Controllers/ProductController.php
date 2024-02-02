@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\UserException;
 use App\Http\Requests\Product\ActivateProductRequest;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Models\Product;
 use App\Services\ProductService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -28,11 +30,10 @@ class ProductController extends Controller
      */
     public function store(StoreProductRequest $request)
     {
-        if($request->validated()){
+        if ($request->validated()) {
             $product = $this->productService->create($request, Product::class);
             return response()->json(['message' => 'Added successfully', 'product' => $product], 200);
-        }
-        else{
+        } else {
             $errors = $request->errors()->all();
             return response()->json(['errors' => $errors], 422);
         }
@@ -41,15 +42,19 @@ class ProductController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Product $product)
+    public function show(string $id)
     {
-        $product = $this->productService->show($product->id, Product::class);
-        // Product::with()
-        //Log::info("test", [$product->productType]);
-        return response()->json([
-            'message' => $product ? 'Product found successfully' : 'Not found',
-            'product' => $product ?? null
-        ], $product ? 200 : 404);
+        try {
+            $product = $this->productService->show($id, Product::class);
+            return response()->json([
+                'message' => 'Product found successfully',
+                'product' => $product,
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 404);
+        }
     }
 
     /**
@@ -72,15 +77,18 @@ class ProductController extends Controller
         ], $removed ? 200 : 404);
     }
 
-    public function activate(ActivateProductRequest $activateProductRequest, Product $product){
+    public function activate(ActivateProductRequest $activateProductRequest, Product $product)
+    {
         $this->productService->activate($product, $activateProductRequest);
     }
 
-    public function draft(Request $request, Product $product){
+    public function draft(Request $request, Product $product)
+    {
         $this->productService->draft($product);
     }
 
-    public function delete(Request $request, Product $product){
+    public function delete(Request $request, Product $product)
+    {
         $this->productService->deleted($product);
     }
 }

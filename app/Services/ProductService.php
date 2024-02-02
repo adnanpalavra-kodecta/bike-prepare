@@ -2,10 +2,14 @@
 
 namespace App\Services;
 
+use App\Exceptions\UserException;
 use App\Http\Resources\ProductWithNewestVariantResource;
 use App\Models\Enums\ProductState;
 use App\Models\Product;
 use App\Models\ProductStateMachine\States\BaseState;
+use App\Models\SearchObject\BaseSearchObject;
+use App\Models\SearchObject\ProductSearchObject;
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -14,19 +18,18 @@ class ProductService extends BaseService
 {
     public function search(Request $request, $model)
     {
-        if (!class_exists($model) || !is_subclass_of($model, Model::class)) {
-            // Check if the class exists and if it's a subclass of Model
-            dd($model);
-        }
-        $queryList = $request->query();
-        $modelQuery = $this->processQueryParams($queryList, $model);
-
-        return parent::search($request, $modelQuery);
+        $searchObject = new ProductSearchObject($request->query());
+        $modelQuery = $model::query();
+        $modelQuery = $this->addFilters($searchObject, $modelQuery);
+        return $searchObject->searchPaginate($modelQuery);
     }
 
     public function show(string $id, $model)
     {
         $product = Product::find($id);
+        if (!$product) {
+            throw new UserException("Product not found!", 404);
+        }
         return ProductWithNewestVariantResource::make($product);
     }
 
@@ -53,6 +56,42 @@ class ProductService extends BaseService
             }
         }
         return $modelQuery;
+    }
+
+    public function addFilters(BaseSearchObject|ProductSearchObject $searchObject, $query)
+    {
+        if ($searchObject->validFrom) {
+            $query = $query->where('validFrom', '>=', $searchObject->validFrom);
+        }
+
+        if ($searchObject->validTo) {
+            $query = $query->where('validTo', '<=', $searchObject->validTo);
+        }
+
+        if ($searchObject->max_price) {
+            $query =
+                $query->with('variants', function ($variantQuery) use ($searchObject) {
+
+                    $variantQuery->where('price', '<', $searchObject->max_price);
+                })->whereHas('variants', function ($variantQuery) use ($searchObject) {
+                    $variantQuery->where('price', '<', $searchObject->max_price);
+                });
+        }
+        if ($searchObject->min_price) {
+            $query =
+                $query->with('variants', function ($variantQuery) use ($searchObject) {
+
+                    $variantQuery->where('price', '>', $searchObject->min_price);
+                })->whereHas('variants', function ($variantQuery) use ($searchObject) {
+                    $variantQuery->where('price', '>', $searchObject->min_price);
+                });
+        }
+
+        if ($searchObject->name) {
+            $query = $query->where('name', 'ILIKE', "%$searchObject->name%");
+        }
+
+        return $query;
     }
     public function activate(Product $product, Request $request)
     {
